@@ -44,12 +44,17 @@ def process_image():
         bg_io = io.BytesIO()
         bg_img.save(bg_io, format='PNG')
         bg_io.seek(0)
+        fg_img = Image.fromarray(foreground_rgba)
+        fg_img.save("output_foreground.png")  # <-- Save to disk
+
+        bg_img = Image.fromarray(background_blurred)
+        bg_img.save("output_background.png")  # <-- Save to disk
 
         return jsonify({
             'foreground': '/get_image/fg',
             'background': '/get_image/bg'
         })
-
+        
 @app.route('/get_image/<which>')
 def get_image(which):
     path = 'output_foreground.png' if which == 'fg' else 'output_background.png'
