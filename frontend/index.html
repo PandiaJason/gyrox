@@ -3,53 +3,131 @@
 <head>
   <meta charset="UTF-8">
   <title>Gyrox Parallax</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style> 
-    /* styles omitted for brevity — same as before */ 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
+    }
+    h2 {
+      margin-top: 1rem;
+    }
+    #uploadForm, #permissionButton {
+      margin: 10px auto;
+      display: block;
+    }
+    #viewer {
+      position: relative;
+      height: 80vh;
+      overflow: hidden;
+      margin: 0 auto;
+    }
+    img.layer {
+      position: absolute;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transition: transform 0.1s ease-out;
+      pointer-events: none;
+    }
+    #status {
+      margin: 10px;
+      font-size: 1rem;
+      color: #aaa;
+    }
+    input[type="file"], button {
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
   </style>
 </head>
 <body>
   <h2>Gyrox Parallax</h2>
+
   <button id="permissionButton">Enable Tilt Access</button>
-  <form id="uploadForm" style="margin-top: 15px">
-    <input type="file" name="image" accept="image/*" required/>
+
+  <form id="uploadForm">
+    <input type="file" name="image" accept="image/*" required />
     <button type="submit">Upload & View</button>
   </form>
-  <div id="viewer" style="margin-top: 20px"></div>
+
+  <div id="status">Awaiting image...</div>
+  <div id="viewer"></div>
+
   <script>
     let layers = [];
+
     document.getElementById('uploadForm').onsubmit = async (e) => {
       e.preventDefault();
-      const data = new FormData(e.target);
-      const res = await fetch('/process', { method: 'POST', body: data });
-      const js = await res.json();
-
       const viewer = document.getElementById('viewer');
+      const status = document.getElementById('status');
       viewer.innerHTML = '';
       layers = [];
+      status.textContent = 'Processing image...';
 
-      [js.background, js.foreground].forEach((src, i) => {
-        const img = document.createElement('img');
-        img.src = src;
-        img.className='layer';
-        img.style.zIndex = i;
-        viewer.append(img);
-        layers.push(img);
-      });
+      const formData = new FormData(e.target);
+
+      try {
+        const res = await fetch('/process', {
+          method: 'POST',
+          body: formData
+        });
+
+        const js = await res.json();
+
+        if (js.error) {
+          status.textContent = `Error: ${js.error}`;
+          return;
+        }
+
+        [js.background, js.foreground].forEach((src, i) => {
+          const img = document.createElement('img');
+          img.src = src;
+          img.className = 'layer';
+          img.style.zIndex = i;
+          viewer.appendChild(img);
+          layers.push(img);
+        });
+
+        status.textContent = 'Tilt your device!';
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Error uploading or processing image.';
+      }
     };
 
-    function handleTilt(e){ layers.forEach((img,i) => {
-        const d = (i+1)/layers.length;
-        img.style.transform = `translate(${e.gamma*d*0.5}px,${e.beta*d*0.5}px)`;
-    });}
-    document.getElementById('permissionButton').onclick = async () => {
-      if (DeviceOrientationEvent.requestPermission) {
-        let p = await DeviceOrientationEvent.requestPermission();
-        if (p==='granted') window.addEventListener('deviceorientation', handleTilt);
+    function handleTilt(e) {
+      layers.forEach((img, i) => {
+        const depth = (i + 1) / layers.length;
+        const x = (e.gamma || 0) * depth;
+        const y = (e.beta || 0) * depth;
+        img.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+      });
+    }
+
+    document.getElementById('permissionButton').onclick = async (event) => {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const permission = await DeviceOrientationEvent.requestPermission();
+          if (permission === 'granted') {
+            window.addEventListener('deviceorientation', handleTilt);
+            event.target.style.display = 'none';
+          }
+        } catch (e) {
+          alert('Permission denied or not supported.');
+        }
       } else {
+        // No permission required (non-iOS)
         window.addEventListener('deviceorientation', handleTilt);
+        event.target.style.display = 'none';
       }
-      event.target.style.display='none';
     };
   </script>
 </body>

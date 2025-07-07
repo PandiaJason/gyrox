@@ -1,0 +1,13 @@
+# Python cache and environment
+venv/
+__pycache__/
+*.pyc
+
+# Flask uploads & outputs
+backend/uploads/
+backend/static/output/
+
+# OS or editor-specific
+.DS_Store
+*.log
+.env
