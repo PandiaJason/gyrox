@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gyrox 2-Layer Parallax</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: white;
+      font-family: sans-serif;
+    }
+    #viewer {
+      position: relative;
+      width: 90vw;
+      height: 70vh;
+      overflow: hidden;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+    .layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      will-change: transform;
+      transition: transform 0.1s ease;
+    }
+    #permissionButton {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Gyrox 2-Layer Parallax</h2>
+  <button id="permissionButton">Enable Tilt Access</button>
+  <div id="viewer">
+    <img src="background_blurred.png" class="layer" style="z-index: 0;">
+    <img src="foreground_clear.png" class="layer" style="z-index: 1;">
+  </div>
+
+  <script>
+    const layers = document.querySelectorAll('.layer');
+    const permissionButton = document.getElementById('permissionButton');
+
+    function handleTilt(event) {
+      const gamma = event.gamma || 0; // left-right
+      const beta = event.beta || 0;   // front-back
+
+      layers.forEach((layer, index) => {
+        const depth = (index + 1) / layers.length;
+        const offsetX = gamma * depth * 0.5;
+        const offsetY = beta * depth * 0.5;
+        layer.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+      });
+    }
+
+    function requestTiltPermission() {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(response => {
+            if (response === 'granted') {
+              window.addEventListener('deviceorientation', handleTilt);
+              permissionButton.style.display = 'none';
+            } else {
+              alert('Permission denied');
+            }
+          })
+          .catch(console.error);
+      } else {
+        window.addEventListener('deviceorientation', handleTilt);
+        permissionButton.style.display = 'none';
+      }
+    }
+
+    permissionButton.addEventListener('click', requestTiltPermission);
+  </script>
+</body>
+</html>
